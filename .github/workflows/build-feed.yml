@@ -36,7 +36,8 @@ jobs:
           mkdir -p dist
           cp repo/Packages repo/Packages.gz repo/*.ipk dist/
           # boot bootstrap assets the router fetches before opkg is up
-          cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla bootstrap/opt.tar.gz dist/
+          cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla dist/
+          cp ax10-opkg/opt.tar.gz dist/          # the opkg bootstrap (its own repo/submodule)
           # boot.sh itself is served raw from the repo, but include it for convenience
           cp boot.sh dist/
           ls -l dist

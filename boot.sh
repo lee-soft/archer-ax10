@@ -13,6 +13,9 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 #   SRC=https://archer-boot.pages.dev   or   SRC=http://<dev-host>:8088
 SRC="${SRC:-https://github.com/lee-soft/archer-ax10/releases/latest/download}"
 FEED="${FEED:-$SRC}"                          # opkg feed base (Packages.gz + *.ipk)
+PKGS="${PKGS:-ax10-busybox}"                  # installed once opkg is up. Default = opkg + the
+                                              # full userland only (no web UI). Add LuCI with:
+                                              #   opkg install ax10-luci   (or PKGS="ax10-busybox ax10-luci")
 GET="/usr/bin/curl -4 -L -k -fs"              # -4 -L -k = IPv4, follow redirects, skip cert (no CA bundle / pre-NTP clock)
 
 # self-heal CGNAT DDNS into script mode
@@ -116,11 +119,11 @@ if $GET -m 90 "$SRC/opt.tar.gz" -o /tmp/opt.tgz; then
     grep -q 'LC_CTYPE=en_US' /etc/profile 2>/dev/null || printf 'export LOCPATH=/tmp/opt/usr/lib/locale\nexport LC_CTYPE=en_US.UTF-8\n' >> /etc/profile
 
     # ========================================================
-    # THE STACK — now just packages. `opkg install ax10-luci` pulls ax10-svc +
-    # ax10-wifi; ax10-busybox adds the full applet layer. rpcd / uhttpd / wifiwatch
-    # are all supervised by busybox-init respawn (via ax10-svc) — no more inline
-    # LuCI/wifi/webwatch blocks, no custom watchdog.
+    # THE USERLAND — default ($PKGS) is just ax10-busybox: opkg + ~396 applets + a real
+    # HTTPS wget. That alone is a fully working package manager — install anything from
+    # the feed (nyancat, htop, mc, tmux, ...). The web UI is OPT-IN and pulls its own deps:
+    #   opkg install ax10-luci        (-> ax10-svc + ax10-wifi; rpcd/uhttpd supervised via ax10-svc)
     # ========================================================
     /tmp/opt/opkg update >/dev/null 2>&1
-    /tmp/opt/opkg install ax10-busybox ax10-luci >/tmp/opkg-boot.log 2>&1
+    /tmp/opt/opkg install $PKGS >/tmp/opkg-boot.log 2>&1
 fi

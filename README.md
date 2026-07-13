@@ -25,21 +25,27 @@ boot.sh (this repo) ── fetched from GitHub Releases
         ├─ start a lifeline dropbear on :2222
         ├─ bootstrap busybox 1.31 + a real HTTPS wget (stock 1.19 wget has no SSL)
         ├─ bootstrap opkg (static Entware + glibc loader tree in tmpfs)
-        └─ opkg install ax10-busybox ax10-luci     ← from the GitHub Releases feed
-                    │
-                    ▼   (deps pulled automatically)
-        ax10-svc ─ service manager (busybox-init respawn; this box has no procd)
+        └─ opkg install ax10-busybox               ← from the GitHub Releases feed
+                    │   default = opkg + a full userland only. Now: opkg install nyancat htop mc ...
+                    ▼
         ax10-busybox ─ ~396 applets + box-wide HTTPS wget
-        ax10-wifi ─ apply /etc/config/wireless to the Broadcom wl driver
-        ax10-luci ─ modern LuCI 21.02 web UI on :8080 (rpcd + uhttpd, init-supervised)
-        ax10-dropbear ─ native SSH on :22 (optional)
+
+   optional add-ons — opkg install them if you want them (deps pulled automatically):
+        ax10-luci ─── modern LuCI 21.02 web UI on :8080  (pulls ax10-svc + ax10-wifi)
+        ax10-dropbear ─ native SSH on :22                (pulls ax10-svc)
+        ax10-svc ──── service manager (busybox-init respawn; this box has no procd)
+        ax10-wifi ─── apply /etc/config/wireless to the Broadcom wl driver
 ```
+
+A working `opkg` + userland is the base and stands on its own (see [ax10-opkg](../../../ax10-opkg));
+LuCI, SSH-on-22, etc. are things you opt into, not things forced on every boot.
 
 ## Repository layout (umbrella + submodules)
 
 | Repo | What it is |
 |---|---|
 | **archer-ax10** (this) | `boot.sh`, feed builder (`build-repo.sh`), optional CF mirror (`deploy-to-pages.sh`), docs, and the package repos as submodules under `repo-src/`. |
+| [ax10-opkg](../../../ax10-opkg) | **The opkg bootstrap** — a working `opkg` + Entware userland on this RO-root router. Stands alone; no LuCI needed. |
 | [ax10-svc](../../../ax10-svc) | Minimal service manager — registers foreground daemons with busybox-init `respawn`. |
 | [ax10-busybox](../../../ax10-busybox) | Additive busybox 1.31 applet layer + the HTTPS `wget` override opkg needs. |
 | [ax10-dropbear](../../../ax10-dropbear) | Dropbear SSH on :22, supervised by ax10-svc. |

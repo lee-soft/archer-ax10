@@ -16,3 +16,6 @@
 [submodule "newstack"]
 	path = newstack
 	url = https://github.com/lee-soft/newstack.git
+[submodule "ax10-opkg"]
+	path = ax10-opkg
+	url = https://github.com/lee-soft/ax10-opkg.git
