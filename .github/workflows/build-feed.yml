@@ -1,0 +1,52 @@
+name: build-feed
+
+# Builds the ax10-* opkg feed from the package submodules and publishes it (plus the boot
+# bootstrap assets) as the GitHub Release the router's opkg points at:
+#   src/gz ax10 https://github.com/lee-soft/archer-ax10/releases/latest/download
+#
+# Trigger by pushing a version tag, e.g.  git tag v1 && git push origin v1
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to (create and) upload the feed to'
+        required: true
+        default: 'feed-latest'
+
+permissions:
+  contents: write
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with package submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the opkg feed
+        run: sh build-repo.sh
+
+      - name: Assemble release assets
+        run: |
+          mkdir -p dist
+          cp repo/Packages repo/Packages.gz repo/*.ipk dist/
+          # boot bootstrap assets the router fetches before opkg is up
+          cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla bootstrap/opt.tar.gz dist/
+          # boot.sh itself is served raw from the repo, but include it for convenience
+          cp boot.sh dist/
+          ls -l dist
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --title "$TAG" \
+            --notes "ax10 opkg feed + boot bootstrap assets" \
+          || gh release upload "$TAG" dist/* --clobber

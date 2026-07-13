@@ -1,0 +1,11 @@
+# opkg feed build output (produced by build-repo.sh / CI)
+/repo/
+*.ipk
+Packages
+Packages.gz
+# optional cloudflare-mirror tooling
+.wrangler/
+# editor / OS
+*.swp
+*~
+.DS_Store
