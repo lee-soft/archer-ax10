@@ -1,0 +1,18 @@
+[submodule "repo-src/ax10-svc"]
+	path = repo-src/ax10-svc
+	url = https://github.com/lee-soft/ax10-svc.git
+[submodule "repo-src/ax10-busybox"]
+	path = repo-src/ax10-busybox
+	url = https://github.com/lee-soft/ax10-busybox.git
+[submodule "repo-src/ax10-dropbear"]
+	path = repo-src/ax10-dropbear
+	url = https://github.com/lee-soft/ax10-dropbear.git
+[submodule "repo-src/ax10-wifi"]
+	path = repo-src/ax10-wifi
+	url = https://github.com/lee-soft/ax10-wifi.git
+[submodule "repo-src/ax10-luci"]
+	path = repo-src/ax10-luci
+	url = https://github.com/lee-soft/ax10-luci.git
+[submodule "newstack"]
+	path = newstack
+	url = https://github.com/lee-soft/newstack.git
