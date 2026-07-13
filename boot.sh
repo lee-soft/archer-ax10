@@ -77,46 +77,14 @@ echo "Starting dropbear SSH on :2222..."
 (/tmp/dropbear_vanilla -p 2222 -R -E </dev/null >/dev/null 2>&1) &
 
 # ============================================================
-# BOOTSTRAP: busybox 1.31 + a real HTTPS wget. opkg fetches via `wget`, and the
-# stock busybox 1.19 wget has NO SSL — this busybox does (its ssl_client applet,
-# no CA bundle / synced clock needed). This is the minimum opkg needs over https;
-# the full 396-applet layer is then delivered by the ax10-busybox package.
+# opkg bootstrap — DELEGATED to ax10-opkg's install.sh. That one script owns the whole
+# opkg install (busybox+HTTPS wget, the /tmp/opt tree, the feed URL, the loader wrappers,
+# and the PATH/env in /etc/profile), so a hand-run install and the boot path are the same
+# code with no drift. See github.com/lee-soft/ax10-opkg. It reads SRC/FEED/GET from the env.
 # ============================================================
-VBB=/tmp/vanilla/busybox
-rm -rf /tmp/vanilla; mkdir -p /tmp/vanilla/bin
-if $GET -m 30 "$SRC/busybox-armv7l" -o "$VBB"; then
-    chmod +x "$VBB"
-    mkdir -p /tmp/wgetssl
-    ln -sf "$VBB" /tmp/wgetssl/wget
-    ln -sf "$VBB" /tmp/wgetssl/ssl_client
-    grep -q '/tmp/wgetssl' /etc/profile 2>/dev/null || echo 'export PATH="/tmp/wgetssl:$PATH"' >> /etc/profile
-fi
-export PATH="/tmp/wgetssl:/tmp/vanilla/bin:$PATH"
-
-# ============================================================
-# opkg bootstrap — static Entware opkg + glibc loader tree in tmpfs /tmp/opt.
-# The `ax10` feed URL is (re)written to $FEED just below; the wget->real-wget /
-# ax10-configure (deferred-postinst runner) plumbing rides along in opt.tar.gz.
-# ============================================================
-if $GET -m 90 "$SRC/opt.tar.gz" -o /tmp/opt.tgz; then
-    rm -rf /tmp/opt; /bin/gzip -dc /tmp/opt.tgz | /bin/tar xf - -C /tmp
-    mkdir -p /tmp/opt/tmp /tmp/opt/var/lock /tmp/opt/var/opkg-lists
-    # Point the opkg feed at $FEED (keeps opt.tar.gz's baked opkg.conf generic/portable).
-    if [ -f /tmp/opt/opkg.conf ]; then
-        grep -q '^src/gz ax10' /tmp/opt/opkg.conf \
-          && sed -i "s#^src/gz ax10 .*#src/gz ax10 $FEED#" /tmp/opt/opkg.conf \
-          || echo "src/gz ax10 $FEED" >> /tmp/opt/opkg.conf
-    fi
-    [ -x /tmp/opt/opt-genwrappers.sh ] && /tmp/opt/opt-genwrappers.sh 2>/dev/null
-    ln -sf /tmp/opt/opkg /tmp/vanilla/bin/opkg 2>/dev/null
-    # put opkg (symlinked above) on interactive shells' PATH
-    grep -q '/tmp/vanilla/bin' /etc/profile 2>/dev/null || echo 'export PATH="$PATH:/tmp/vanilla/bin"' >> /etc/profile
-    # /root is on the RO squashfs -> tmpfs-mount it so TUI tools can write ~/.config
-    grep -q ' /root ' /proc/mounts || { cp -a /root /tmp/.root-seed 2>/dev/null
-        mount -t tmpfs tmpfs /root 2>/dev/null && cp -a /tmp/.root-seed/. /root/ 2>/dev/null; rm -rf /tmp/.root-seed; }
-    grep -q '/tmp/opt/wrappers' /etc/profile 2>/dev/null || echo 'export PATH="/tmp/opt/wrappers:$PATH"' >> /etc/profile
-    grep -q 'TERMINFO=/tmp/opt' /etc/profile 2>/dev/null || echo 'export TERMINFO=/tmp/opt/share/terminfo' >> /etc/profile
-    grep -q 'LC_CTYPE=en_US' /etc/profile 2>/dev/null || printf 'export LOCPATH=/tmp/opt/usr/lib/locale\nexport LC_CTYPE=en_US.UTF-8\n' >> /etc/profile
+if $GET -m 30 "$SRC/install.sh" -o /tmp/opkg-install.sh; then
+    SRC="$SRC" FEED="$FEED" GET="$GET -m 90" NO_UPDATE=1 sh /tmp/opkg-install.sh
+    export PATH="/tmp/opt/wrappers:/tmp/wgetssl:/tmp/vanilla/bin:$PATH"
 
     # ========================================================
     # THE USERLAND — default ($PKGS) is just ax10-busybox: opkg + ~396 applets + a real
@@ -124,6 +92,8 @@ if $GET -m 90 "$SRC/opt.tar.gz" -o /tmp/opt.tgz; then
     # the feed (nyancat, htop, mc, tmux, ...). The web UI is OPT-IN and pulls its own deps:
     #   opkg install ax10-luci        (-> ax10-svc + ax10-wifi; rpcd/uhttpd supervised via ax10-svc)
     # ========================================================
-    /tmp/opt/opkg update >/dev/null 2>&1
-    /tmp/opt/opkg install $PKGS >/tmp/opkg-boot.log 2>&1
+    if [ -x /tmp/opt/opkg ]; then
+        /tmp/opt/opkg update >/dev/null 2>&1
+        /tmp/opt/opkg install $PKGS >/tmp/opkg-boot.log 2>&1
+    fi
 fi

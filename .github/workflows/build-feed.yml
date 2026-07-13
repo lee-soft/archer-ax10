@@ -25,7 +25,7 @@ jobs:
   feed:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (with submodules for opt.tar.gz + bootstrap)
+      - name: Checkout (bootstrap seeds live in this repo; payloads come from releases)
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -41,6 +41,15 @@ jobs:
           done
           ls -l feed
 
+      - name: Collect the opkg payload + installer from ax10-opkg's "payload" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p opkg
+          gh release download payload --repo lee-soft/ax10-opkg \
+            --pattern 'opt.tar.gz' --pattern 'install.sh' --dir opkg
+          ls -l opkg
+
       - name: Build the Packages index
         run: sh index.sh feed
 
@@ -49,7 +58,7 @@ jobs:
           mkdir -p dist
           cp feed/*.ipk feed/Packages feed/Packages.gz dist/
           cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla dist/
-          cp ax10-opkg/opt.tar.gz dist/
+          cp opkg/opt.tar.gz opkg/install.sh dist/
           cp boot.sh dist/
           ls -l dist
 
