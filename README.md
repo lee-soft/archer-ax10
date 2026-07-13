@@ -55,8 +55,12 @@ LuCI, SSH-on-22, etc. are things you opt into, not things forced on every boot.
 
 ## The `opkg` feed (served from GitHub Releases)
 
-`build-repo.sh` packs each `repo-src/<pkg>/` into an `.ipk` and a `Packages(.gz)` index. CI
-publishes the index + all `.ipk`s as a GitHub **Release**, and the router points `opkg` at:
+**Each package repo builds and publishes its own `.ipk`** (its `build-ipk` workflow → that
+repo's `ipk` release). From-source packages (e.g. `ax10-dropbear`) compile in CI and never
+commit the binary; script/vendored packages pack their `data/`. The `build-feed` workflow here
+downloads each package's `.ipk`, runs `index.sh` to build the `Packages(.gz)` index, and
+publishes the index + all `.ipk`s + the boot bootstrap assets as a GitHub **Release**. The
+router points `opkg` at:
 
 ```
 src/gz ax10 https://github.com/lee-soft/archer-ax10/releases/latest/download
