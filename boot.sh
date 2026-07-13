@@ -8,11 +8,15 @@
 # ============================================================
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 # Where the router pulls boot assets + the opkg feed. Default: this project's GitHub
-# Releases (Packages.gz, the *.ipk feed, and busybox-armv7l/opt.tar.gz/dropbear_vanilla
-# all live there as release assets). Override for a CDN or dev host, e.g.
+# Releases — the aggregated feed (Packages.gz + the *.ipk feed) plus the dropbear_vanilla
+# :2222 lifeline seed. Override for a CDN or dev host, e.g.
 #   SRC=https://archer-boot.pages.dev   or   SRC=http://<dev-host>:8088
 SRC="${SRC:-https://github.com/lee-soft/archer-ax10/releases/latest/download}"
 FEED="${FEED:-$SRC}"                          # opkg feed base (Packages.gz + *.ipk)
+# The opkg payload has ONE canonical home: the ax10-opkg repo's "payload" release
+# (install.sh + opt.tar.gz + busybox-armv7l). We fetch install.sh from there and let it
+# pull its own opt.tar.gz/busybox — NOT duplicated into this feed. Override for dev/CDN.
+OPKG_SRC="${OPKG_SRC:-https://github.com/lee-soft/ax10-opkg/releases/latest/download}"
 PKGS="${PKGS:-ax10-busybox}"                  # installed once opkg is up. Default = opkg + the
                                               # full userland only (no web UI). Add LuCI with:
                                               #   opkg install ax10-luci   (or PKGS="ax10-busybox ax10-luci")
@@ -77,13 +81,15 @@ echo "Starting dropbear SSH on :2222..."
 (/tmp/dropbear_vanilla -p 2222 -R -E </dev/null >/dev/null 2>&1) &
 
 # ============================================================
-# opkg bootstrap — DELEGATED to ax10-opkg's install.sh. That one script owns the whole
-# opkg install (busybox+HTTPS wget, the /tmp/opt tree, the feed URL, the loader wrappers,
-# and the PATH/env in /etc/profile), so a hand-run install and the boot path are the same
-# code with no drift. See github.com/lee-soft/ax10-opkg. It reads SRC/FEED/GET from the env.
+# opkg bootstrap — DELEGATED to ax10-opkg's install.sh (fetched from its OWN canonical
+# release, $OPKG_SRC). That one script owns the whole opkg install (busybox+HTTPS wget,
+# the /tmp/opt tree, the feed URL, the loader wrappers, and the PATH/env in /etc/profile),
+# so a hand-run install and the boot path are the same code with no drift. It pulls its
+# opt.tar.gz + busybox from $OPKG_SRC and points the opkg `ax10` feed at $FEED (this repo).
+# See github.com/lee-soft/ax10-opkg.
 # ============================================================
-if $GET -m 30 "$SRC/install.sh" -o /tmp/opkg-install.sh; then
-    SRC="$SRC" FEED="$FEED" GET="$GET -m 90" NO_UPDATE=1 sh /tmp/opkg-install.sh
+if $GET -m 30 "$OPKG_SRC/install.sh" -o /tmp/opkg-install.sh; then
+    SRC="$OPKG_SRC" FEED="$FEED" GET="$GET -m 90" NO_UPDATE=1 sh /tmp/opkg-install.sh
     export PATH="/tmp/opt/wrappers:/tmp/wgetssl:/tmp/vanilla/bin:$PATH"
 
     # ========================================================

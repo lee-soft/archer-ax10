@@ -41,15 +41,6 @@ jobs:
           done
           ls -l feed
 
-      - name: Collect the opkg payload + installer from ax10-opkg's "payload" release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p opkg
-          gh release download payload --repo lee-soft/ax10-opkg \
-            --pattern 'opt.tar.gz' --pattern 'install.sh' --dir opkg
-          ls -l opkg
-
       - name: Build the Packages index
         run: sh index.sh feed
 
@@ -57,8 +48,10 @@ jobs:
         run: |
           mkdir -p dist
           cp feed/*.ipk feed/Packages feed/Packages.gz dist/
-          cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla dist/
-          cp opkg/opt.tar.gz opkg/install.sh dist/
+          # The opkg payload (opt.tar.gz + install.sh + busybox) is NOT bundled here — it
+          # has one canonical home, the ax10-opkg "payload" release, which boot.sh fetches
+          # directly. This feed ships only the .ipks, the index, boot.sh, and the :2222 seed.
+          cp bootstrap/dropbear_vanilla dist/
           cp boot.sh dist/
           ls -l dist
 
