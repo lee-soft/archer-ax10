@@ -1,10 +1,12 @@
 name: build-feed
 
-# Builds the ax10-* opkg feed from the package submodules and publishes it (plus the boot
-# bootstrap assets) as the GitHub Release the router's opkg points at:
+# Aggregates each ax10-* package's own .ipk (published to its repo's "ipk" release) into
+# the opkg feed the router consumes, and publishes it — plus the boot bootstrap assets —
+# as a GitHub Release:
 #   src/gz ax10 https://github.com/lee-soft/archer-ax10/releases/latest/download
 #
-# Trigger by pushing a version tag, e.g.  git tag v1 && git push origin v1
+# Trigger by pushing a version tag, e.g.  git tag v4 && git push origin v4
+# (Make sure each package's build-ipk workflow has published its .ipk first.)
 
 on:
   push:
@@ -12,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag to (create and) upload the feed to'
+        description: 'Release tag to publish the feed to'
         required: true
         default: 'feed-latest'
 
@@ -23,31 +25,40 @@ jobs:
   feed:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (with package submodules)
+      - name: Checkout (with submodules for opt.tar.gz + bootstrap)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Build the opkg feed
-        run: sh build-repo.sh
+      - name: Collect each package's .ipk from its repo's "ipk" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p feed
+          for p in ax10-svc ax10-busybox ax10-dropbear ax10-wifi ax10-luci; do
+            echo "== $p =="
+            gh release download ipk --repo lee-soft/$p --pattern '*.ipk' --dir feed
+          done
+          ls -l feed
 
-      - name: Assemble release assets
+      - name: Build the Packages index
+        run: sh index.sh feed
+
+      - name: Assemble release assets (feed + boot bootstrap)
         run: |
           mkdir -p dist
-          cp repo/Packages repo/Packages.gz repo/*.ipk dist/
-          # boot bootstrap assets the router fetches before opkg is up
+          cp feed/*.ipk feed/Packages feed/Packages.gz dist/
           cp bootstrap/busybox-armv7l bootstrap/dropbear_vanilla dist/
-          cp ax10-opkg/opt.tar.gz dist/          # the opkg bootstrap (its own repo/submodule)
-          # boot.sh itself is served raw from the repo, but include it for convenience
+          cp ax10-opkg/opt.tar.gz dist/
           cp boot.sh dist/
           ls -l dist
 
-      - name: Publish Release
+      - name: Publish feed release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           gh release create "$TAG" dist/* \
             --title "$TAG" \
-            --notes "ax10 opkg feed + boot bootstrap assets" \
+            --notes "ax10 opkg feed (aggregated per-package .ipks) + boot bootstrap assets" \
           || gh release upload "$TAG" dist/* --clobber
