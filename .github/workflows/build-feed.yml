@@ -35,7 +35,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p feed
-          for p in ax10-svc ax10-busybox ax10-dropbear ax10-wifi ax10-luci; do
+          for p in ax10-svc ax10-busybox ax10-dropbear ax10-wifi ax10-luci ax10-debloat; do
             echo "== $p =="
             gh release download ipk --repo lee-soft/$p --pattern '*.ipk' --dir feed
           done

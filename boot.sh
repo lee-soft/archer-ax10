@@ -18,8 +18,10 @@ FEED="${FEED:-$SRC}"                          # opkg feed base (Packages.gz + *.
 # pull its own opt.tar.gz/busybox — NOT duplicated into this feed. Override for dev/CDN.
 OPKG_SRC="${OPKG_SRC:-https://github.com/lee-soft/ax10-opkg/releases/latest/download}"
 PKGS="${PKGS:-ax10-busybox}"                  # installed once opkg is up. Default = opkg + the
-                                              # full userland only (no web UI). Add LuCI with:
-                                              #   opkg install ax10-luci   (or PKGS="ax10-busybox ax10-luci")
+                                              # full userland only (no web UI, no debloat). Opt-in extras:
+                                              #   opkg install ax10-luci      # LuCI web UI on :8080
+                                              #   opkg install ax10-debloat   # stop TP-Link cloud/phone-home junk
+                                              # or bake them in, e.g. PKGS="ax10-busybox ax10-debloat ax10-luci"
 GET="/usr/bin/curl -4 -L -k -fs"              # -4 -L -k = IPv4, follow redirects, skip cert (no CA bundle / pre-NTP clock)
 
 # self-heal CGNAT DDNS into script mode
@@ -29,23 +31,11 @@ GET="/usr/bin/curl -4 -L -k -fs"              # -4 -L -k = IPv4, follow redirect
 touch /tmp/archer-boot-ran.txt
 /usr/bin/curl -fs -m 10 http://api.ipify.org -o /tmp/current_public_ip.txt
 
-# disable TR-069 / CWMP remote management
-/sbin/uci set cwmp.info.enable='off'
-/sbin/uci set cwmp.info.inform_enable='off'
-/sbin/uci commit cwmp
-/etc/init.d/cwmp stop
-
-# ============================================================
-# HARDENING — stop TP-Link cloud/phone-home + LAN-exposed junk. All FS is ramfs so
-# the firmware restarts these every boot; re-stopping here is the persistence.
-# ============================================================
-for s in cloud_brd cloud_client cloud_https domain_login smart_home agile_config \
-         wportal sync-server tdpServer tmpServer dropbear miniupnpd zzzzzzaconn-indicator; do
-    [ -x /etc/init.d/$s ] && /etc/init.d/$s stop >/dev/null 2>&1
-done
-for p in cloud-brd cloud-client cloud-https tdpServer tmpServer miniupnpd conn-indicator sync-server; do
-    killall $p >/dev/null 2>&1
-done
+# HARDENING / TP-Link debloat (CWMP, cloud phone-home, tdpServer/CVE-2023-1389, telnet,
+# UPnP, ...) is now the ax10-debloat package — it also disarms the cron/monit keepalives
+# that revive the junk within ~60s, which this inline block never did. It's OPT-IN: run
+#   opkg install ax10-debloat            (tier 2, recommended)
+# once opkg is up, or add ax10-debloat to PKGS below to harden on every boot.
 
 # ----------------------------------------------------------------
 # Root password = the router's OWN web-GUI admin password, so SSH + LuCI root

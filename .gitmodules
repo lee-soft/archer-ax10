@@ -19,3 +19,6 @@
 [submodule "ax10-opkg"]
 	path = ax10-opkg
 	url = https://github.com/lee-soft/ax10-opkg.git
+[submodule "repo-src/ax10-debloat"]
+	path = repo-src/ax10-debloat
+	url = https://github.com/lee-soft/ax10-debloat.git
