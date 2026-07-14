@@ -1,5 +1,7 @@
 # archer-ax10
 
+> ⚡ **Just want it working?** Skip the build — grab the prebuilt binaries and get started in minutes at **[archer-boot.pages.dev](https://archer-boot.pages.dev)** (root the router first via [Waujito/TPLlAX1500GPL](https://github.com/Waujito/TPLlAX1500GPL)).
+
 A self-assembling boot + package system for the **TP-Link Archer AX10** (Broadcom BCM963178,
 ARMv7l, glibc 2.26, busybox-init, kernel 4.1) running TP-Link's OpenWrt-based firmware.
 
@@ -20,7 +22,7 @@ openvpn "up" hook  (the ONE flash-persisted boot-exec, survives reboots)
         │  waits for WAN, then fetches over HTTPS
         ▼
 boot.sh (this repo) ── fetched from GitHub Releases
-        ├─ self-heal DDNS, disable TR-069/CWMP, stop TP-Link cloud/phone-home services
+        ├─ self-heal CGNAT DDNS (TP-Link debloat/hardening is opt-in now: opkg install ax10-debloat)
         ├─ set root password = the router's OWN web-GUI password (see "Password" below)
         ├─ start a lifeline dropbear on :2222
         ├─ bootstrap busybox 1.31 + a real HTTPS wget (stock 1.19 wget has no SSL)
